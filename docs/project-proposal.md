@@ -6,6 +6,8 @@ compact: true
 ---
 [Back to Main Page](index)
 
+Document Version 1.0
+
 ### Basic Info
 
 Project Name: Smart Parking System
