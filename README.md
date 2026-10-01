@@ -3,7 +3,7 @@ Automatic parking system with mobile and web integration that uses a check-in ki
 and streamline the parking process for customers.
 
 # Requirements
-Below are the following 
+Below are the following requirements to run the website reservation system:
 * Node.js LTS
 * npm — comes with Node.js
 * React
