@@ -9,6 +9,7 @@ Below are the following requirements to run the website reservation system:
 * React
 * React DOM
 * Vite — development/build tool
+* Postgre SQL
 
 # Setup
 1. Install Node.js from the official website: https://nodejs.org/en/download
