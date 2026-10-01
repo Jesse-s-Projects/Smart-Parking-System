@@ -1,3 +1,6 @@
+---
+title: 'Smart Parking System'
+---
 ### Project Documentation
 
 1. [Project Proposal](project-proposal)
