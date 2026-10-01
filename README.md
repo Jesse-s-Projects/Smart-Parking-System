@@ -10,7 +10,7 @@ Below are the following
 * React DOM
 * Vite — development/build tool
 
-#Setup
+# Setup
 1. Install Node.js from the official website: https://nodejs.org/en/download
 2. Clone the repo: git clone https://github.com/Jesse-s-Projects/Smart-Parking-System
 3. Open cmd(Command Prompt) in the current working directory(CWD) and navigate to the project: cd Smart-Parking-System
