@@ -16,4 +16,4 @@ title: 'Smart Parking System'
 ---
 
 ### Resources
-1. https://wiki.postgresql.org/wiki/Don%27t_Do_This
+1. [https://wiki.postgresql.org/wiki/Don%27t_Do_This](https://wiki.postgresql.org/wiki/Don%27t_Do_This)
