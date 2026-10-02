@@ -7,6 +7,7 @@ compact: true
 [Back to Main Page](index)
 
 Document Version 1.0
+---
 
 ### Basic Info
 
@@ -23,7 +24,7 @@ Team:
 Tech Stack:
 * React.js (Frontend)
 * Next.js (Frontend & Backend)
-* PostgresSQL (Database)
+* PostgreSQL (Database)
 * Github & Github Pages (Source Control & Documentation)
 * OpenStreetMap (Navigation integration)
 
