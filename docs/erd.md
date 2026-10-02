@@ -8,8 +8,6 @@ compact: true
 
 Document Version 1.0
 
----
-
 ### Current ERD (v1)
 
 ![Entity Relationship Diagram](images/erd.png)

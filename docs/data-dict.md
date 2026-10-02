@@ -8,8 +8,6 @@ compact: true
 
 Document Version 1.0
 
----
-
 ### Universal Conventions
 
 1. UUID for primary keys

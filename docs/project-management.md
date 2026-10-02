@@ -8,8 +8,6 @@ compact: true
 
 Document Version 1.0
 
----
-
 ### Development Methodology
 
 This project will follow an Agile development approach, with work completed incrementally throughout the project.
