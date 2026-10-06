@@ -18,3 +18,9 @@ Below are the following requirements to run the website reservation system:
 4. Install the dependencies: npm install
 5. Start the app: npm run dev
 6. Copy the local host link from cmd, paste it into the browser, and press enter. This should navigate to the website.
+
+# Configuring the Server
+1. To start the backend locally, go back to the project directory: cd C:\Users\$YourUserName$\$ParentFolder$\Smart-Parking-System
+2. Once there, navigate to the server folder: cd server
+3. Start node: node server.js
+4. You should see something like: ParkSmart API running on http://localhost:5000. This means the server is now running.
