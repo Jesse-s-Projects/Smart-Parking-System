@@ -22,10 +22,12 @@ Below are the following requirements to run the website reservation system:
 # Configuring the Server
 1. To start the backend locally, go back to the project directory: cd C:\Users\$YourUserName$\$ParentFolder$\Smart-Parking-System
 2. Once there, navigate to the server folder: cd server
-3. Start node: node server.js
-4. You should see something like: ParkSmart API running on http://localhost:5000. This means the server is now running.
+3. Install the dependencies: npm install
+4. Start node: node server.js
+5. You should see something like: ParkSmart API running on http://localhost:5000. This means the server is now running.
 
 # Running the Kiosk
 1. Open Command Prompt, navigate to the project directory, and then the kiosk folder.
-2. Once there, run the following command: npm run dev -- --port 5174.
-3. The kiosk should now be running.
+2. Install the dependencies: npm install
+3. Once there, run the following command: npm run dev -- --port 5174.
+4. The kiosk should now be running.
