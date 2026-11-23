@@ -23,6 +23,9 @@ Below are the following requirements to run the website reservation system:
 1. Navigate to the server folder
 2. Copy .env.example and rename to .env
 3. Enter your own PostGRESQL server details into the file and replace the placeholder information
+4. While still in the server folder, install the dependencies: npm install.
+5. Start node: node server.js
+6. You should see something like: ParkSmart API running on http://localhost:5000. This means the server is now running.
 
 # Setup and Running the App
 1. Install Node.js from the official website: https://nodejs.org/en/download
@@ -31,13 +34,6 @@ Below are the following requirements to run the website reservation system:
 4. Install the dependencies: npm install
 5. Start the app: npm run dev
 6. Copy the local host link from cmd, paste it into the browser, and press enter. This should navigate to the website.
-
-# Configuring the Server
-1. To start the backend locally, go back to the project directory: cd C:\Users\$YourUserName$\$ParentFolder$\Smart-Parking-System
-2. Once there, navigate to the server folder: cd server
-3. Install the dependencies: npm install
-4. Start node: node server.js
-5. You should see something like: ParkSmart API running on http://localhost:5000. This means the server is now running.
 
 # Running the Kiosk
 1. Open Command Prompt, navigate to the project directory, and then the kiosk folder.
