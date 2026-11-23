@@ -1,449 +1,113 @@
-import { useState } from "react";
+// Replace your existing App.jsx with this version to add phone-based reservations,
+// live status refresh, database-backed activity history, and Stripe Checkout.
+import { useEffect, useState } from "react";
 import "./App.css";
-
-const initialSpots = [
-  { id: "A01", status: "available", type: "Regular" },
-  { id: "A02", status: "occupied", type: "Regular" },
-  { id: "A03", status: "available", type: "EV Charging" },
-  { id: "A04", status: "reserved", type: "Regular" },
-
-  { id: "B01", status: "available", type: "Accessible" },
-  { id: "B02", status: "occupied", type: "Regular" },
-  { id: "B03", status: "available", type: "Regular" },
-  { id: "B04", status: "available", type: "EV Charging" },
-
-  { id: "C01", status: "occupied", type: "Regular" },
-  { id: "C02", status: "available", type: "Regular" },
-  { id: "C03", status: "reserved", type: "Regular" },
-  { id: "C04", status: "available", type: "Accessible" },
-
-  { id: "D01", status: "available", type: "Regular" },
-  { id: "D02", status: "occupied", type: "Regular" },
-  { id: "D03", status: "available", type: "Regular" },
-  { id: "D04", status: "available", type: "EV Charging" },
-];
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 function App() {
-  const [spots, setSpots] = useState(initialSpots);
+  const [spots, setSpots] = useState([]);
+  const [history, setHistory] = useState([]);
   const [selectedSpot, setSelectedSpot] = useState(null);
   const [search, setSearch] = useState("");
   const [activePage, setActivePage] = useState("Dashboard");
+  const [phone, setPhone] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [reservation, setReservation] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
 
-  const available = spots.filter(
-    (spot) => spot.status === "available"
-  ).length;
+  async function loadData() {
+    try {
+      const [spotsResponse, historyResponse] = await Promise.all([
+        fetch(`${API}/api/parking-spots`), fetch(`${API}/api/history?limit=12`)
+      ]);
+      if (!spotsResponse.ok || !historyResponse.ok) throw new Error("API request failed");
+      const [spotData, historyData] = await Promise.all([spotsResponse.json(), historyResponse.json()]);
+      setSpots(spotData); setHistory(historyData);
+      setSelectedSpot(current => current ? spotData.find(s => String(s.id) === String(current.id)) || current : null);
+    } catch (error) { console.error("Unable to load ParkSmart data:", error); }
+  }
+  useEffect(() => {
+    loadData();
+    const timer = setInterval(loadData, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
-  const occupied = spots.filter(
-    (spot) => spot.status === "occupied"
-  ).length;
+  const available = spots.filter(s => s.status === "available").length;
+  const occupied = spots.filter(s => s.status === "occupied").length;
+  const reserved = spots.filter(s => s.status === "reserved").length;
+  const filteredSpots = spots.filter(s => String(s.id).toLowerCase().includes(search.toLowerCase()));
 
-  const reserved = spots.filter(
-    (spot) => spot.status === "reserved"
-  ).length;
-
-  const filteredSpots = spots.filter((spot) =>
-    spot.id.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const reserveSpot = () => {
+  async function reserveSpot() {
     if (!selectedSpot) return;
-
-    setSpots((current) =>
-      current.map((spot) =>
-        spot.id === selectedSpot.id
-          ? { ...spot, status: "reserved" }
-          : spot
-      )
-    );
-
-    setSelectedSpot({
-      ...selectedSpot,
-      status: "reserved",
-    });
-  };
-
-  return (
-    <div className="app">
-
-      {/* SIDEBAR */}
-      <aside className="sidebar">
-
-        <div className="logo">
-          <div className="logo-icon">P</div>
-          <div>
-            <h2>ParkSmart</h2>
-            <span>Smart Parking</span>
-          </div>
+    if (!/^\+?[1-9]\d{7,14}$/.test(phone.replace(/[^\d+]/g, ""))) {
+      setNotice("Enter a valid phone number including country code, e.g. +15551234567."); return;
+    }
+    setBusy(true); setNotice("");
+    try {
+      const response = await fetch(`${API}/api/reservations`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spotId: selectedSpot.id, phone, name: customerName })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Reservation failed");
+      setReservation(data.reservation); setSelectedSpot(data.spot);
+      setNotice(`Spot ${data.spot.id} reserved. Complete payment to secure your booking.`);
+      await loadData();
+    } catch (error) { setNotice(error.message); }
+    finally { setBusy(false); }
+  }
+  async function payForReservation() {
+    if (!reservation) return;
+    setBusy(true);
+    try {
+      const response = await fetch(`${API}/api/reservations/${reservation.id}/checkout`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not start checkout");
+      window.location.assign(data.checkoutUrl);
+    } catch (error) { setNotice(error.message); setBusy(false); }
+  }
+  const eventLabel = e => ({
+    reservation_created: "Reservation created",
+    payment_started: "Payment checkout started",
+    payment_completed: "Payment completed",
+    customer_checked_in: "Customer checked in",
+    parking_spot_cleared: "Parking spot cleared",
+    reservation_expired_no_show: "Reservation expired (no-show)"
+  }[e] || e.replaceAll("_", " "));
+  return <div className="app">
+    <aside className="sidebar">
+      <div className="logo"><div className="logo-icon">P</div><div><h2>ParkSmart</h2><span>Smart Parking</span></div></div>
+      <nav>{["Dashboard","Parking Map","Reservations","History"].map((page,i)=><button key={page} className={activePage===page?"nav-item active":"nav-item"} onClick={()=>setActivePage(page)}><span>{["⌂","▦","◷","↺"][i]}</span>{page}</button>)}</nav>
+      <div className="sidebar-bottom"><div className="user-card"><div className="avatar">PS</div><div><strong>ParkSmart Admin</strong><small>Facility manager</small></div></div></div>
+    </aside>
+    <main className="main">
+      <header className="header"><div><div className="breadcrumb">Home / {activePage}</div><h1>{activePage}</h1></div><div className="header-actions"><div className="search"><span>⌕</span><input placeholder="Search parking spot..." value={search} onChange={e=>setSearch(e.target.value)}/></div><button className="notification" onClick={loadData}>↻</button></div></header>
+      <section className="content">
+        <div className="welcome"><div><h2>Parking facility overview</h2><p>Live parking and reservation activity.</p></div><div className="live"><span className="live-dot"></span>Auto-refreshing</div></div>
+        <div className="stats">
+          {[["Total Spaces",spots.length,"blue","P"],["Available",available,"green","✓"],["Occupied",occupied,"red","●"],["Reserved",reserved,"yellow","◷"]].map(([label,value,color,icon])=><div className="stat-card" key={label}><div className={`stat-icon ${color}`}>{icon}</div><div><span>{label}</span><strong>{value}</strong></div></div>)}
         </div>
-
-        <nav>
-          <button
-            className={activePage === "Dashboard" ? "nav-item active" : "nav-item"}
-            onClick={() => setActivePage("Dashboard")}
-          >
-            <span>⌂</span>
-            Dashboard
-          </button>
-
-          <button
-            className={activePage === "Parking Map" ? "nav-item active" : "nav-item"}
-            onClick={() => setActivePage("Parking Map")}
-          >
-            <span>▦</span>
-            Parking Map
-          </button>
-
-          <button
-            className={activePage === "Reservations" ? "nav-item active" : "nav-item"}
-            onClick={() => setActivePage("Reservations")}
-          >
-            <span>◷</span>
-            Reservations
-          </button>
-
-          <button
-            className={activePage === "History" ? "nav-item active" : "nav-item"}
-            onClick={() => setActivePage("History")}
-          >
-            <span>↺</span>
-            History
-          </button>
-        </nav>
-
-        <div className="sidebar-bottom">
-          <button className="nav-item">
-            <span>⚙</span>
-            Settings
-          </button>
-
-          <div className="user-card">
-            <div className="avatar">JD</div>
-            <div>
-              <strong>John Doe</strong>
-              <small>Driver</small>
-            </div>
-          </div>
-        </div>
-
-      </aside>
-
-      {/* MAIN */}
-      <main className="main">
-
-        {/* HEADER */}
-        <header className="header">
-
-          <div>
-            <div className="breadcrumb">
-              Home / {activePage}
-            </div>
-            <h1>{activePage}</h1>
-          </div>
-
-          <div className="header-actions">
-
-            <div className="search">
-              <span>⌕</span>
-              <input
-                placeholder="Search parking spot..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-
-            <button className="notification">
-              ♢
-              <span></span>
-            </button>
-
-          </div>
-
-        </header>
-
-        {/* DASHBOARD */}
-        <section className="content">
-
-          <div className="welcome">
-            <div>
-              <h2>Good evening, John 👋</h2>
-              <p>
-                Here's the current status of the parking facility.
-              </p>
-            </div>
-
-            <div className="live">
-              <span className="live-dot"></span>
-              Live updates
-            </div>
-          </div>
-
-          {/* STAT CARDS */}
-          <div className="stats">
-
-            <div className="stat-card">
-              <div className="stat-icon blue">P</div>
-              <div>
-                <span>Total Spaces</span>
-                <strong>{spots.length}</strong>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon green">✓</div>
-              <div>
-                <span>Available</span>
-                <strong>{available}</strong>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon red">●</div>
-              <div>
-                <span>Occupied</span>
-                <strong>{occupied}</strong>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon yellow">◷</div>
-              <div>
-                <span>Reserved</span>
-                <strong>{reserved}</strong>
-              </div>
-            </div>
-
-          </div>
-
-          {/* PARKING MAP */}
-          <div className="dashboard-grid">
-
-            <section className="panel parking-panel">
-
-              <div className="panel-header">
-                <div>
-                  <h3>Parking Facility</h3>
-                  <p>Select an available parking space</p>
-                </div>
-
-                <select>
-                  <option>Floor 1</option>
-                  <option>Floor 2</option>
-                  <option>Floor 3</option>
-                </select>
-              </div>
-
-              <div className="legend">
-                <div>
-                  <span className="legend-dot available-dot"></span>
-                  Available
-                </div>
-
-                <div>
-                  <span className="legend-dot occupied-dot"></span>
-                  Occupied
-                </div>
-
-                <div>
-                  <span className="legend-dot reserved-dot"></span>
-                  Reserved
-                </div>
-              </div>
-
-              <div className="parking-map">
-
-                <div className="entrance">
-                  ↓ ENTRANCE
-                </div>
-
-                <div className="parking-grid">
-
-                  {filteredSpots.map((spot) => (
-
-                    <button
-                      key={spot.id}
-                      className={`parking-spot ${spot.status} ${
-                        selectedSpot?.id === spot.id
-                          ? "selected"
-                          : ""
-                      }`}
-                      onClick={() => setSelectedSpot(spot)}
-                    >
-
-                      <strong>{spot.id}</strong>
-
-                      <span>
-                        {spot.type === "EV Charging"
-                          ? "⚡"
-                          : spot.type === "Accessible"
-                          ? "♿"
-                          : "P"}
-                      </span>
-
-                    </button>
-
-                  ))}
-
-                </div>
-
-                <div className="road">
-                  DRIVEWAY
-                </div>
-
-              </div>
-
-            </section>
-
-            {/* SELECTED SPOT */}
-            <section className="panel details-panel">
-
-              {selectedSpot ? (
-
-                <>
-                  <div className="details-top">
-
-                    <div>
-                      <span className="small-label">
-                        SELECTED SPACE
-                      </span>
-
-                      <h2>{selectedSpot.id}</h2>
-                    </div>
-
-                    <div
-                      className={`status-badge ${selectedSpot.status}`}
-                    >
-                      {selectedSpot.status}
-                    </div>
-
-                  </div>
-
-                  <div className="spot-preview">
-                    <div className="big-parking-icon">
-                      P
-                    </div>
-                    <strong>{selectedSpot.type}</strong>
-                    <span>Floor 1</span>
-                  </div>
-
-                  <div className="details-list">
-
-                    <div>
-                      <span>Hourly rate</span>
-                      <strong>$2.50 / hr</strong>
-                    </div>
-
-                    <div>
-                      <span>Distance to entrance</span>
-                      <strong>42 m</strong>
-                    </div>
-
-                    <div>
-                      <span>Security</span>
-                      <strong>24/7 monitored</strong>
-                    </div>
-
-                  </div>
-
-                  {selectedSpot.status === "available" ? (
-
-                    <button
-                      className="reserve-button"
-                      onClick={reserveSpot}
-                    >
-                      Reserve Space
-                    </button>
-
-                  ) : (
-
-                    <button
-                      className="reserve-button disabled"
-                      disabled
-                    >
-                      {selectedSpot.status === "occupied"
-                        ? "Currently Occupied"
-                        : "Already Reserved"}
-                    </button>
-
-                  )}
-
-                </>
-
-              ) : (
-
-                <div className="empty-selection">
-                  <div className="empty-icon">P</div>
-                  <h3>Select a parking space</h3>
-                  <p>
-                    Click a space on the map to view
-                    its details and reserve it.
-                  </p>
-                </div>
-
-              )}
-
-            </section>
-
-          </div>
-
-          {/* ACTIVITY */}
-          <section className="panel activity-panel">
-
-            <div className="panel-header">
-              <div>
-                <h3>Recent Activity</h3>
-                <p>Latest parking facility events</p>
-              </div>
-
-              <button className="view-all">
-                View all
-              </button>
-            </div>
-
-            <div className="activity-list">
-
-              <div className="activity">
-                <div className="activity-icon green">
-                  ✓
-                </div>
-
-                <div>
-                  <strong>Space A03 became available</strong>
-                  <span>2 minutes ago</span>
-                </div>
-              </div>
-
-              <div className="activity">
-                <div className="activity-icon red">
-                  P
-                </div>
-
-                <div>
-                  <strong>Vehicle parked at B02</strong>
-                  <span>7 minutes ago</span>
-                </div>
-              </div>
-
-              <div className="activity">
-                <div className="activity-icon yellow">
-                  ◷
-                </div>
-
-                <div>
-                  <strong>Space C03 reserved</strong>
-                  <span>14 minutes ago</span>
-                </div>
-              </div>
-
-            </div>
-
+        {notice && <div className="notice">{notice}</div>}
+        {activePage !== "History" ? <div className="dashboard-grid">
+          <section className="panel parking-panel"><div className="panel-header"><div><h3>Parking Facility</h3><p>Select an available parking space</p></div><button className="refresh" onClick={loadData}>Refresh</button></div>
+            <div className="legend"><div><span className="legend-dot available-dot"/>Available</div><div><span className="legend-dot occupied-dot"/>Occupied</div><div><span className="legend-dot reserved-dot"/>Reserved</div></div>
+            <div className="parking-map"><div className="entrance">↓ ENTRANCE</div><div className="parking-grid">{filteredSpots.map(spot=><button key={spot.id} className={`parking-spot ${spot.status} ${selectedSpot?.id===spot.id?"selected":""}`} onClick={()=>{setSelectedSpot(spot);setReservation(null);setNotice("");}}><strong>{spot.id}</strong><span>{spot.type==="EV Charging"?"⚡":spot.type==="Accessible"?"♿":"P"}</span></button>)}</div><div className="road">DRIVEWAY</div></div>
           </section>
-
-        </section>
-
-      </main>
-
-    </div>
-  );
+          <section className="panel details-panel">{selectedSpot ? <><div className="details-top"><div><span className="small-label">SELECTED SPACE</span><h2>{selectedSpot.id}</h2></div><div className={`status-badge ${selectedSpot.status}`}>{selectedSpot.status}</div></div><div className="spot-preview"><div className="big-parking-icon">P</div><strong>{selectedSpot.type}</strong><span>Parking facility</span></div><div className="details-list"><div><span>Hourly rate</span><strong>$2.50 / hr</strong></div><div><span>Spot status</span><strong>{selectedSpot.status}</strong></div></div>
+            {selectedSpot.status==="available" && !reservation && <div className="booking-fields"><label>Phone number (include country code)</label><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+15551234567"/><label>Name (optional)</label><input value={customerName} onChange={e=>setCustomerName(e.target.value)} placeholder="Customer name"/><button className="reserve-button" disabled={busy} onClick={reserveSpot}>{busy?"Processing…":"Reserve Space"}</button></div>}
+            {reservation && <><p className="payment-note">Reservation created. Complete payment through secure Stripe Checkout.</p><button className="reserve-button" disabled={busy} onClick={payForReservation}>Continue to payment</button></>}
+            {selectedSpot.status!=="available" && <button className="reserve-button disabled" disabled>{selectedSpot.status==="occupied"?"Currently Occupied":"Already Reserved"}</button>}
+          </> : <div className="empty-selection"><div className="empty-icon">P</div><h3>Select a parking space</h3><p>Click a space on the map to view its details and reserve it.</p></div>}</section>
+        </div> : <section className="panel activity-panel"><h3>Event history</h3><p>Recorded events from the ParkSmart database.</p><EventList history={history}/></section>}
+        {activePage !== "History" && <section className="panel activity-panel"><div className="panel-header"><div><h3>Recent Activity</h3><p>Latest recorded facility events</p></div><button className="view-all" onClick={()=>setActivePage("History")}>View all</button></div><EventList history={history.slice(0,6)}/></section>}
+      </section>
+    </main>
+  </div>;
 }
-
+function EventList({history}) {
+  if (!history.length) return <p className="empty-events">No events recorded yet.</p>;
+  const label = e => ({reservation_created:"Reservation created",payment_started:"Payment started",payment_completed:"Payment completed",customer_checked_in:"Customer checked in",parking_spot_cleared:"Parking spot cleared",reservation_expired_no_show:"Reservation expired (no-show)"}[e] || e.replaceAll("_"," "));
+  return <div className="activity-list">{history.map(e=><div className="activity" key={e.id}><div className="activity-icon blue">•</div><div><strong>{label(e.event_type)}{e.spot_id?` · ${e.spot_id}`:""}</strong><span>{new Date(e.created_at).toLocaleString()} {e.phone?` · ${e.phone}`:""}</span></div></div>)}</div>;
+}
 export default App;

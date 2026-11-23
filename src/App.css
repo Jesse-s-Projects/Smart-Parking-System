@@ -738,3 +738,17 @@ nav {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+
+/* ParkSmart upgrade additions */
+.notice{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:13px 16px;border-radius:10px;margin-bottom:18px;font-size:13px}
+.refresh{border:1px solid #e5e7eb;background:#fff;border-radius:8px;padding:8px 12px;color:#2563eb}
+.booking-fields{display:flex;flex-direction:column;gap:8px;margin-top:20px}
+.booking-fields label{font-size:12px;color:#6b7280}
+.booking-fields input{padding:11px;border:1px solid #d1d5db;border-radius:8px;width:100%}
+.payment-note{font-size:13px;color:#6b7280;line-height:1.5;margin-top:15px}
+.empty-events{color:#9ca3af;margin-top:20px;font-size:13px}
+.activity-icon.blue{background:#eff6ff;color:#2563eb}
+
+/* Override the starter Vite root constraints for the full-width dashboard. */
+#root{width:100%;max-width:none;margin:0;text-align:left;border:0;min-height:100vh;display:block}
